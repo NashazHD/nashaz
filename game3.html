@@ -1,0 +1,219 @@
+<!DOCTYPE html>  
+<html lang="ar">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <style>  
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #eee; }  
+        #board { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 5px; }  
+        .cell { width: 100px; height: 100px; background-color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: pointer; }  
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }  
+    </style>  
+    <title>Tic-Tac-Toe</title>  
+</head>  
+<body>  
+
+<div id="board">  
+    <div class="cell" data-index="0"></div>  
+    <div class="cell" data-index="1"></div>  
+    <div class="cell" data-index="2"></div>  
+    <div class="cell" data-index="3"></div>  
+    <div class="cell" data-index="4"></div>  
+    <div class="cell" data-index="5"></div>  
+    <div class="cell" data-index="6"></div>  
+    <div class="cell" data-index="7"></div>  
+    <div class="cell" data-index="8"></div>  
+</div>  
+<canvas id="fireworksCanvas"></canvas>  
+
+<script>  
+    const board = document.querySelectorAll('.cell');  
+    let boardState = Array.from(Array(9).keys());  
+    const player = 'O'; // Human Player  
+    const computer = 'X'; // Computer Player  
+    let currentPlayer = player;  
+
+    board.forEach(cell => cell.addEventListener('click', handleTurnClick));  
+
+    function handleTurnClick(event) {  
+        const index = event.target.dataset.index;  
+        if (typeof boardState[index] === 'number') {  
+            turn(index, player);  
+            if (!checkWin(boardState, player) && !checkTie()) {  
+                setTimeout(() => turn(bestSpot(), computer), 500);  
+            }  
+        }  
+    }  
+
+    function turn(index, player) {  
+        boardState[index] = player;  
+        document.querySelector(`.cell[data-index="${index}"]`).textContent = player;  
+        let gameWon = checkWin(boardState, player);  
+        if (gameWon) endGame(gameWon);  
+    }  
+
+    function checkWin(state, player) {  
+        const winPatterns = [  
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],  
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],  
+            [0, 4, 8], [2, 4, 6]  
+        ];  
+        let plays = state.reduce((a, e, i) =>   
+            (e === player) ? a.concat(i) : a, []);  
+        let gameWon = null;  
+        for (let [index, win] of winPatterns.entries()) {  
+            if (win.every(elem => plays.indexOf(elem) > -1)) {  
+                gameWon = {index: index, player: player};  
+                break;  
+            }  
+        }  
+        return gameWon;  
+    }  
+
+    function endGame(gameWon) {  
+        for (let index of winPatterns[gameWon.index]) {  
+            document.querySelector(`.cell[data-index="${index}"]`).style.backgroundColor =  
+                gameWon.player === player ? "blue" : "red";  
+        }  
+        board.forEach(cell => cell.removeEventListener('click', handleTurnClick));  
+        if (gameWon.player === player) {  
+            alert("أنت الفائز!");  
+            startFireworks();  
+        } else {  
+            alert("أفضل الحظوظ في المرة القادمة!");  
+        }  
+    }  
+
+    function checkTie() {  
+        if (emptySquares().length === 0) {  
+            board.forEach(cell => {  
+                cell.style.backgroundColor = "green";  
+                cell.removeEventListener('click', handleTurnClick);  
+            });  
+            alert("التعادل!");  
+            return true;  
+        }  
+        return false;  
+    }  
+
+    function emptySquares() {  
+        return boardState.filter(s => typeof s === 'number');  
+    }  
+
+    function bestSpot() {  
+        return minimax(boardState, computer).index;  
+    }  
+
+    function minimax(newState, player) {  
+        const availSpots = emptySquares(newState);  
+
+        if (checkWin(newState, player)) {  
+            return {score: -10};  
+        } else if (checkWin(newState, computer)) {  
+            return {score: 10};  
+        } else if (availSpots.length === 0) {  
+            return {score: 0};  
+        }  
+
+        const moves = [];  
+        for (let i = 0; i < availSpots.length; i++) {  
+            const move = {};  
+            move.index = newState[availSpots[i]];  
+            newState[availSpots[i]] = player;  
+
+            if (player === computer) {  
+                const result = minimax(newState, 'O');  
+                move.score = result.score;  
+            } else {  
+                const result = minimax(newState, 'X');  
+                move.score = result.score;  
+            }  
+
+            newState[availSpots[i]] = move.index;  
+            moves.push(move);  
+        }  
+
+        let bestMove;  
+        if (player === computer) {  
+            let bestScore = -10000;  
+            for (let i = 0; i < moves.length; i++) {  
+                if (moves[i].score > bestScore) {  
+                    bestScore = moves[i].score;  
+                    bestMove = i;  
+                }  
+            }  
+        } else {  
+            let bestScore = 10000;  
+            for (let i = 0; i < moves.length; i++) {  
+                if (moves[i].score < bestScore) {  
+                    bestScore = moves[i].score;  
+                    bestMove = i;  
+                }  
+            }  
+        }  
+
+        return moves[bestMove];  
+    }  
+
+    // إعداد الألعاب النارية  
+    function startFireworks() {  
+        const canvas = document.getElementById('fireworksCanvas');  
+        const context = canvas.getContext('2d');  
+        canvas.width = window.innerWidth;  
+        canvas.height = window.innerHeight;  
+        let fireworks = [];  
+
+        function createFirework(x, y) {  
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff'];  
+            let particles = [];  
+            for (let i = 0; i < 60; i++) {  
+                const angle = (Math.PI * 2) * (i / 60);  
+                const speed = Math.random() * 5 + 2;  
+                particles.push({  
+                    x: x,  
+                    y: y,  
+                    angle: angle,  
+                    speed: speed,  
+                    color: colors[Math.floor(Math.random() * colors.length)],  
+                    opacity: 1  
+                });  
+            }  
+            fireworks.push(particles);  
+        }  
+
+        function renderFireworks() {  
+            context.clearRect(0, 0, canvas.width, canvas.height);  
+            fireworks.forEach((particles, index) => {  
+                particles.forEach(particle => {  
+                    particle.x += Math.cos(particle.angle) * particle.speed;  
+                    particle.y += Math.sin(particle.angle) * particle.speed;  
+                    particle.opacity -= 0.01;  
+
+                    context.fillStyle = `rgba(${parseInt(particle.color.slice(1, 3), 16)}, ${parseInt(particle.color.slice(3, 5), 16)}, ${parseInt(particle.color.slice(5, 7), 16)}, ${particle.opacity})`;  
+                    context.beginPath();  
+                    context.arc(particle.x, particle.y, 2, 0, Math.PI * 2);  
+                    context.fill();  
+                });  
+
+                if (particles.every(particle => particle.opacity <= 0)) {  
+                    fireworks.splice(index, 1);  
+                }  
+            });  
+        }  
+
+        function animate() {  
+            renderFireworks();  
+            requestAnimationFrame(animate);  
+        }  
+
+        setInterval(() => {  
+            if (fireworks.length < 5) {  
+                createFirework(Math.random() * canvas.width, Math.random() * canvas.height);  
+            }  
+        }, 500);  
+
+        animate();  
+    }  
+</script>  
+</body>  
+</html>
